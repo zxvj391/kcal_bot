@@ -10,7 +10,7 @@ from aiogram import Bot, Dispatcher, types
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
-TOKEN = os.getenv("8937636550:AAH99izvb7LpJsdg_b0fDlmRuXPNUtpbISo")
+TOKEN = "8937636550:AAH99izvb7LpJsdg_b0fDlmRuXPNUtpbISo"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
