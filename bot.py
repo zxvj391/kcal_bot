@@ -1,16 +1,25 @@
-import os
-from aiohttp import web
 import asyncio
+import json
+import os
 import re
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-TOKEN = os.getenv("TOKEN")
+
+TOKEN = os.getenv("8937636550:AAH99izvb7LpJsdg_b0fDlmRuXPNUtpbISo")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
+DATA_FILE = "data.json"
+TIMEZONE = ZoneInfo("Europe/Warsaw")
+
 users = {}
+
 
 PRODUCTS = {
     "запеканка": {
@@ -46,6 +55,10 @@ PRODUCTS = {
     "апельсин": {
         "aliases": ["апельсин", "апельсина", "апельсины"],
         "kcal": 47, "protein": 0.9, "fat": 0.1, "carbs": 12
+    },
+    "мандарины": {
+        "aliases": ["мандарин", "мандарина", "мандарины"],
+        "kcal": 53, "protein": 0.8, "fat": 0.3, "carbs": 13
     },
     "рис": {
         "aliases": ["рис", "риса", "ryż"],
@@ -148,19 +161,52 @@ PRODUCTS = {
 }
 
 
+def today_key():
+    return datetime.now(TIMEZONE).strftime("%Y-%m-%d")
+
+
+def load_data():
+    global users
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r", encoding="utf-8") as file:
+            users = json.load(file)
+
+
+def save_data():
+    with open(DATA_FILE, "w", encoding="utf-8") as file:
+        json.dump(users, file, ensure_ascii=False, indent=2)
+
+
 def get_user(user_id):
+    user_id = str(user_id)
+
     if user_id not in users:
         users[user_id] = {
             "target_kcal": 3000,
             "target_protein": 130,
             "target_fat": 80,
             "target_carbs": 430,
+            "days": {}
+        }
+
+    day = today_key()
+
+    if day not in users[user_id]["days"]:
+        users[user_id]["days"][day] = {
             "kcal": 0,
             "protein": 0,
             "fat": 0,
-            "carbs": 0
+            "carbs": 0,
+            "items": []
         }
+        save_data()
+
     return users[user_id]
+
+
+def get_today_data(user):
+    day = today_key()
+    return user["days"][day]
 
 
 def bar(current, target, length=12):
@@ -171,24 +217,24 @@ def bar(current, target, length=12):
     return "█" * filled + "░" * (length - filled)
 
 
-def stats_text(data):
+def stats_text(user, day_data):
     return (
         "📊 ТВОЙ ДЕНЬ\n\n"
-        f"🔥 Калории\n{bar(data['kcal'], data['target_kcal'])}\n"
-        f"{data['kcal']:.0f} / {data['target_kcal']:.0f} ккал\n"
-        f"Осталось: {data['target_kcal'] - data['kcal']:.0f} ккал\n\n"
+        f"🔥 Калории\n{bar(day_data['kcal'], user['target_kcal'])}\n"
+        f"{day_data['kcal']:.0f} / {user['target_kcal']:.0f} ккал\n"
+        f"Осталось: {user['target_kcal'] - day_data['kcal']:.0f} ккал\n\n"
 
-        f"🥩 Белки\n{bar(data['protein'], data['target_protein'])}\n"
-        f"{data['protein']:.1f} / {data['target_protein']:.1f} г\n"
-        f"Осталось: {data['target_protein'] - data['protein']:.1f} г\n\n"
+        f"🥩 Белки\n{bar(day_data['protein'], user['target_protein'])}\n"
+        f"{day_data['protein']:.1f} / {user['target_protein']:.1f} г\n"
+        f"Осталось: {user['target_protein'] - day_data['protein']:.1f} г\n\n"
 
-        f"🥑 Жиры\n{bar(data['fat'], data['target_fat'])}\n"
-        f"{data['fat']:.1f} / {data['target_fat']:.1f} г\n"
-        f"Осталось: {data['target_fat'] - data['fat']:.1f} г\n\n"
+        f"🥑 Жиры\n{bar(day_data['fat'], user['target_fat'])}\n"
+        f"{day_data['fat']:.1f} / {user['target_fat']:.1f} г\n"
+        f"Осталось: {user['target_fat'] - day_data['fat']:.1f} г\n\n"
 
-        f"🍚 Углеводы\n{bar(data['carbs'], data['target_carbs'])}\n"
-        f"{data['carbs']:.1f} / {data['target_carbs']:.1f} г\n"
-        f"Осталось: {data['target_carbs'] - data['carbs']:.1f} г"
+        f"🍚 Углеводы\n{bar(day_data['carbs'], user['target_carbs'])}\n"
+        f"{day_data['carbs']:.1f} / {user['target_carbs']:.1f} г\n"
+        f"Осталось: {user['target_carbs'] - day_data['carbs']:.1f} г"
     )
 
 
@@ -209,7 +255,7 @@ def extract_number(text):
     return float(nums[0])
 
 
-def add_product_to_data(data, product_name, item, amount):
+def add_product_to_day(day_data, product_name, item, amount):
     if item.get("piece"):
         if amount is None:
             amount = 1
@@ -233,10 +279,21 @@ def add_product_to_data(data, product_name, item, amount):
     fat = item["fat"] * multiplier
     carbs = item["carbs"] * multiplier
 
-    data["kcal"] += kcal
-    data["protein"] += protein
-    data["fat"] += fat
-    data["carbs"] += carbs
+    day_data["kcal"] += kcal
+    day_data["protein"] += protein
+    day_data["fat"] += fat
+    day_data["carbs"] += carbs
+
+    day_data["items"].append({
+        "name": product_name,
+        "amount": amount_text,
+        "kcal": round(kcal, 1),
+        "protein": round(protein, 1),
+        "fat": round(fat, 1),
+        "carbs": round(carbs, 1)
+    })
+
+    save_data()
 
     return kcal, protein, fat, carbs, amount_text
 
@@ -244,13 +301,17 @@ def add_product_to_data(data, product_name, item, amount):
 def help_text():
     return (
         "🤖 КОМАНДЫ\n\n"
-        "/stats — показать КБЖУ\n"
-        "/reset — сбросить день\n"
+        "/stats — показать КБЖУ за сегодня\n"
+        "/reset — сбросить сегодняшний день\n"
+        "/days — список сохранённых дней\n"
+        "/day 2026-06-14 — посмотреть конкретный день\n"
+        "/products — список продуктов\n\n"
+
+        "⚙️ Нормы:\n"
         "/setkcal 3000 — изменить калории\n"
         "/setprotein 130 — изменить белки\n"
         "/setfat 80 — изменить жиры\n"
-        "/setcarbs 430 — изменить углеводы\n"
-        "/products — список продуктов\n\n"
+        "/setcarbs 430 — изменить углеводы\n\n"
 
         "🍽 Как добавлять еду:\n"
         "• 550 22 26 55\n"
@@ -266,11 +327,40 @@ def help_text():
     )
 
 
-def simple_advice(text, data):
+def day_report(user, date):
+    if date not in user["days"]:
+        return "За этот день записей нет."
+
+    d = user["days"][date]
+
+    items_text = ""
+    for item in d["items"]:
+        items_text += (
+            f"• {item['name']} ({item['amount']}) — "
+            f"{item['kcal']} ккал, "
+            f"Б {item['protein']} г, "
+            f"Ж {item['fat']} г, "
+            f"У {item['carbs']} г\n"
+        )
+
+    if not items_text:
+        items_text = "Еды не записано."
+
+    return (
+        f"📅 День: {date}\n\n"
+        f"🔥 Калории: {d['kcal']:.0f} ккал\n"
+        f"🥩 Белки: {d['protein']:.1f} г\n"
+        f"🥑 Жиры: {d['fat']:.1f} г\n"
+        f"🍚 Углеводы: {d['carbs']:.1f} г\n\n"
+        f"🍽 Что ел:\n{items_text}"
+    )
+
+
+def simple_advice(text, user, day_data):
     text = text.lower()
 
     if "сколько" in text or "осталось" in text:
-        return stats_text(data)
+        return stats_text(user, day_data)
 
     if "что" in text and ("поесть" in text or "купить" in text):
         return (
@@ -282,13 +372,13 @@ def simple_advice(text, data):
         )
 
     if "бел" in text:
-        return f"🥩 Белка осталось: {data['target_protein'] - data['protein']:.1f} г. Добей творогом, яйцами, skyr или курицей."
+        return f"🥩 Белка осталось: {user['target_protein'] - day_data['protein']:.1f} г. Добей творогом, яйцами, skyr или курицей."
 
     if "угл" in text:
-        return f"🍚 Углеводов осталось: {data['target_carbs'] - data['carbs']:.1f} г. Добей рисом, макаронами, хлебом или бананами."
+        return f"🍚 Углеводов осталось: {user['target_carbs'] - day_data['carbs']:.1f} г. Добей рисом, макаронами, хлебом или бананами."
 
     if "жир" in text:
-        return f"🥑 Жиров осталось: {data['target_fat'] - data['fat']:.1f} г. Добей сыром, орехами, яйцами или маслом."
+        return f"🥑 Жиров осталось: {user['target_fat'] - day_data['fat']:.1f} г. Добей сыром, орехами, яйцами или маслом."
 
     return (
         "Я могу считать еду по названию или по цифрам.\n\n"
@@ -298,14 +388,18 @@ def simple_advice(text, data):
         "• запеканка\n"
         "• пицца 300\n"
         "• клубника 250\n"
-        "• 550 22 26 55"
+        "• 550 22 26 55\n\n"
+        "История:\n"
+        "• /days\n"
+        "• /day 2026-06-14"
     )
 
 
 @dp.message()
 async def handle(message: types.Message):
     user_id = message.from_user.id
-    data = get_user(user_id)
+    user = get_user(user_id)
+    day_data = get_today_data(user)
     text = message.text.strip()
 
     if text == "/start":
@@ -317,7 +411,7 @@ async def handle(message: types.Message):
         return
 
     if text == "/stats":
-        await message.answer(stats_text(data))
+        await message.answer(stats_text(user, day_data))
         return
 
     if text == "/products":
@@ -325,42 +419,72 @@ async def handle(message: types.Message):
         await message.answer("🍽 Продукты, которые я знаю:\n\n" + product_list)
         return
 
+    if text == "/days":
+        days = sorted(user["days"].keys(), reverse=True)
+
+        if not days:
+            await message.answer("Пока нет сохранённых дней.")
+            return
+
+        await message.answer("📅 Сохранённые дни:\n\n" + "\n".join(days[:30]))
+        return
+
+    if text.startswith("/day"):
+        parts = text.split()
+
+        if len(parts) < 2:
+            await message.answer("Пиши так: /day 2026-06-14")
+            return
+
+        date = parts[1]
+        await message.answer(day_report(user, date))
+        return
+
     if text == "/reset":
-        data["kcal"] = 0
-        data["protein"] = 0
-        data["fat"] = 0
-        data["carbs"] = 0
-        await message.answer("🧹 День сброшен.")
+        day = today_key()
+        user["days"][day] = {
+            "kcal": 0,
+            "protein": 0,
+            "fat": 0,
+            "carbs": 0,
+            "items": []
+        }
+        save_data()
+        await message.answer("🧹 Сегодняшний день сброшен.")
         return
 
     if text.startswith("/setkcal"):
         try:
-            data["target_kcal"] = float(text.split()[1])
-            await message.answer(f"✅ Калории изменены: {data['target_kcal']:.0f} ккал")
+            user["target_kcal"] = float(text.split()[1])
+            save_data()
+            await message.answer(f"✅ Калории изменены: {user['target_kcal']:.0f} ккал")
         except:
             await message.answer("Пиши так: /setkcal 3000")
         return
 
     if text.startswith("/setprotein"):
         try:
-            data["target_protein"] = float(text.split()[1])
-            await message.answer(f"✅ Белки изменены: {data['target_protein']:.0f} г")
+            user["target_protein"] = float(text.split()[1])
+            save_data()
+            await message.answer(f"✅ Белки изменены: {user['target_protein']:.0f} г")
         except:
             await message.answer("Пиши так: /setprotein 130")
         return
 
     if text.startswith("/setfat"):
         try:
-            data["target_fat"] = float(text.split()[1])
-            await message.answer(f"✅ Жиры изменены: {data['target_fat']:.0f} г")
+            user["target_fat"] = float(text.split()[1])
+            save_data()
+            await message.answer(f"✅ Жиры изменены: {user['target_fat']:.0f} г")
         except:
             await message.answer("Пиши так: /setfat 80")
         return
 
     if text.startswith("/setcarbs"):
         try:
-            data["target_carbs"] = float(text.split()[1])
-            await message.answer(f"✅ Углеводы изменены: {data['target_carbs']:.0f} г")
+            user["target_carbs"] = float(text.split()[1])
+            save_data()
+            await message.answer(f"✅ Углеводы изменены: {user['target_carbs']:.0f} г")
         except:
             await message.answer("Пиши так: /setcarbs 430")
         return
@@ -369,7 +493,7 @@ async def handle(message: types.Message):
 
     if item:
         amount = extract_number(text)
-        kcal, protein, fat, carbs, amount_text = add_product_to_data(data, product_name, item, amount)
+        kcal, protein, fat, carbs, amount_text = add_product_to_day(day_data, product_name, item, amount)
 
         await message.answer(
             f"✅ Записал: {product_name} ({amount_text})\n\n"
@@ -377,17 +501,28 @@ async def handle(message: types.Message):
             f"🥩 Белки: {protein:.1f} г\n"
             f"🥑 Жиры: {fat:.1f} г\n"
             f"🍚 Углеводы: {carbs:.1f} г\n\n"
-            + stats_text(data)
+            + stats_text(user, day_data)
         )
         return
 
     try:
         kcal, protein, fat, carbs = map(float, text.replace(",", ".").split())
 
-        data["kcal"] += kcal
-        data["protein"] += protein
-        data["fat"] += fat
-        data["carbs"] += carbs
+        day_data["kcal"] += kcal
+        day_data["protein"] += protein
+        day_data["fat"] += fat
+        day_data["carbs"] += carbs
+
+        day_data["items"].append({
+            "name": "ручной ввод",
+            "amount": "-",
+            "kcal": round(kcal, 1),
+            "protein": round(protein, 1),
+            "fat": round(fat, 1),
+            "carbs": round(carbs, 1)
+        })
+
+        save_data()
 
         await message.answer(
             "✅ Записал вручную:\n\n"
@@ -395,23 +530,31 @@ async def handle(message: types.Message):
             f"🥩 Б: {protein:.1f} г\n"
             f"🥑 Ж: {fat:.1f} г\n"
             f"🍚 У: {carbs:.1f} г\n\n"
-            + stats_text(data)
+            + stats_text(user, day_data)
         )
         return
 
     except:
-        await message.answer(simple_advice(text, data))
+        await message.answer(simple_advice(text, user, day_data))
 
 
 async def remind():
-    for user_id, data in users.items():
-        left = data["target_kcal"] - data["kcal"]
+    for user_id, user in users.items():
+        day = today_key()
+
+        if day not in user["days"]:
+            continue
+
+        day_data = user["days"][day]
+        left = user["target_kcal"] - day_data["kcal"]
+
         if left > 500:
             await bot.send_message(
-                user_id,
+                int(user_id),
                 f"⏰ Напоминание\n\n"
                 f"Осталось примерно {left:.0f} ккал. Пора поесть."
             )
+
 
 async def health(request):
     return web.Response(text="Bot is alive")
@@ -428,7 +571,9 @@ async def start_web_server():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
 
+
 async def main():
+    load_data()
     await start_web_server()
 
     scheduler = AsyncIOScheduler()
@@ -438,8 +583,10 @@ async def main():
     await bot.set_my_commands([
         types.BotCommand(command="start", description="Запуск"),
         types.BotCommand(command="help", description="Помощь"),
-        types.BotCommand(command="stats", description="КБЖУ за день"),
-        types.BotCommand(command="reset", description="Сбросить день"),
+        types.BotCommand(command="stats", description="КБЖУ за сегодня"),
+        types.BotCommand(command="reset", description="Сбросить сегодня"),
+        types.BotCommand(command="days", description="Список дней"),
+        types.BotCommand(command="day", description="Посмотреть день"),
         types.BotCommand(command="products", description="Список продуктов"),
         types.BotCommand(command="setkcal", description="Изменить калории"),
         types.BotCommand(command="setprotein", description="Изменить белки"),
