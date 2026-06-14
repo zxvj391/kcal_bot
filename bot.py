@@ -60,6 +60,7 @@ PRODUCTS = {
         "aliases": ["мандарин", "мандарина", "мандарины"],
         "kcal": 53, "protein": 0.8, "fat": 0.3, "carbs": 13
     },
+
     "рис": {
         "aliases": ["рис", "риса", "ryż"],
         "kcal": 344, "protein": 6.7, "fat": 0.7, "carbs": 78
@@ -88,6 +89,7 @@ PRODUCTS = {
         "aliases": ["картошка", "картошку", "картофель", "ziemniaki"],
         "kcal": 77, "protein": 2, "fat": 0.1, "carbs": 17
     },
+
     "творог": {
         "aliases": ["творог", "творога", "творожок", "twaróg"],
         "kcal": 151, "protein": 17, "fat": 8, "carbs": 2.7
@@ -95,10 +97,6 @@ PRODUCTS = {
     "сыр": {
         "aliases": ["сыр", "сыра", "ser"],
         "kcal": 350, "protein": 25, "fat": 27, "carbs": 2
-    },
-    "молоко": {
-        "aliases": ["молоко", "молока", "mleko"],
-        "kcal": 60, "protein": 3.2, "fat": 3.2, "carbs": 4.8
     },
     "йогурт": {
         "aliases": ["йогурт", "йогурта", "йогурты", "jogurt"],
@@ -108,6 +106,7 @@ PRODUCTS = {
         "aliases": ["skyr", "скир", "скирчик"],
         "kcal": 65, "protein": 12, "fat": 0.2, "carbs": 4
     },
+
     "курица": {
         "aliases": ["курица", "курицу", "куриное", "куриная", "курицы", "kurczak"],
         "kcal": 165, "protein": 31, "fat": 3.6, "carbs": 0
@@ -124,6 +123,7 @@ PRODUCTS = {
         "aliases": ["колбаса", "колбасу", "колбасы", "салями", "пепперони", "kiełbasa"],
         "kcal": 320, "protein": 16, "fat": 28, "carbs": 2
     },
+
     "пицца": {
         "aliases": ["пицца", "пиццу", "пиццы", "pizza"],
         "kcal": 266, "protein": 11, "fat": 10, "carbs": 33
@@ -138,6 +138,7 @@ PRODUCTS = {
         "kcal": 400, "protein": 18, "fat": 18, "carbs": 42,
         "portion": True
     },
+
     "шоколад": {
         "aliases": ["шоколад", "шоколадка", "шоколадку", "czekolada"],
         "kcal": 550, "protein": 7, "fat": 35, "carbs": 55
@@ -157,6 +158,57 @@ PRODUCTS = {
     "нутелла": {
         "aliases": ["нутелла", "nutella"],
         "kcal": 540, "protein": 6, "fat": 31, "carbs": 57
+    },
+
+    "вода": {
+        "aliases": ["вода", "воды", "water", "woda"],
+        "kcal": 0, "protein": 0, "fat": 0, "carbs": 0,
+        "liquid": True
+    },
+    "молоко": {
+        "aliases": ["молоко", "молока", "mleko"],
+        "kcal": 60, "protein": 3.2, "fat": 3.2, "carbs": 4.8,
+        "liquid": True
+    },
+    "кола": {
+        "aliases": ["кола", "колу", "cola", "coca cola", "coca-cola", "кока кола"],
+        "kcal": 42, "protein": 0, "fat": 0, "carbs": 10.6,
+        "liquid": True
+    },
+    "сок яблочный": {
+        "aliases": ["яблочный сок", "сок яблочный", "apple juice", "sok jabłkowy"],
+        "kcal": 46, "protein": 0.1, "fat": 0.1, "carbs": 11,
+        "liquid": True
+    },
+    "сок апельсиновый": {
+        "aliases": ["апельсиновый сок", "сок апельсиновый", "orange juice", "sok pomarańczowy"],
+        "kcal": 45, "protein": 0.7, "fat": 0.2, "carbs": 10.4,
+        "liquid": True
+    },
+    "сок мультифрукт": {
+        "aliases": ["мультифрукт", "мультифруктовый сок", "multiwitamina", "sok multiwitamina"],
+        "kcal": 48, "protein": 0.2, "fat": 0.1, "carbs": 11.5,
+        "liquid": True
+    },
+    "энергетик": {
+        "aliases": ["энергетик", "монстр", "monster", "red bull", "ред булл", "energy drink"],
+        "kcal": 45, "protein": 0, "fat": 0, "carbs": 11,
+        "liquid": True
+    },
+    "чай сладкий": {
+        "aliases": ["сладкий чай", "чай сладкий", "ice tea", "lipton"],
+        "kcal": 30, "protein": 0, "fat": 0, "carbs": 7.5,
+        "liquid": True
+    },
+    "чай": {
+        "aliases": ["чай", "tea", "herbata"],
+        "kcal": 0, "protein": 0, "fat": 0, "carbs": 0,
+        "liquid": True
+    },
+    "кофе": {
+        "aliases": ["кофе", "coffee", "kawa"],
+        "kcal": 2, "protein": 0.1, "fat": 0, "carbs": 0,
+        "liquid": True
     }
 }
 
@@ -205,8 +257,7 @@ def get_user(user_id):
 
 
 def get_today_data(user):
-    day = today_key()
-    return user["days"][day]
+    return user["days"][today_key()]
 
 
 def bar(current, target, length=12):
@@ -223,15 +274,12 @@ def stats_text(user, day_data):
         f"🔥 Калории\n{bar(day_data['kcal'], user['target_kcal'])}\n"
         f"{day_data['kcal']:.0f} / {user['target_kcal']:.0f} ккал\n"
         f"Осталось: {user['target_kcal'] - day_data['kcal']:.0f} ккал\n\n"
-
         f"🥩 Белки\n{bar(day_data['protein'], user['target_protein'])}\n"
         f"{day_data['protein']:.1f} / {user['target_protein']:.1f} г\n"
         f"Осталось: {user['target_protein'] - day_data['protein']:.1f} г\n\n"
-
         f"🥑 Жиры\n{bar(day_data['fat'], user['target_fat'])}\n"
         f"{day_data['fat']:.1f} / {user['target_fat']:.1f} г\n"
         f"Осталось: {user['target_fat'] - day_data['fat']:.1f} г\n\n"
-
         f"🍚 Углеводы\n{bar(day_data['carbs'], user['target_carbs'])}\n"
         f"{day_data['carbs']:.1f} / {user['target_carbs']:.1f} г\n"
         f"Осталось: {user['target_carbs'] - day_data['carbs']:.1f} г"
@@ -240,10 +288,20 @@ def stats_text(user, day_data):
 
 def find_product(text):
     text = text.lower()
+    found = None
+    longest = 0
+
     for name, item in PRODUCTS.items():
         for alias in item["aliases"]:
-            if re.search(rf"\b{re.escape(alias.lower())}\b", text):
-                return name, item
+            alias_lower = alias.lower()
+            if re.search(rf"\b{re.escape(alias_lower)}\b", text):
+                if len(alias_lower) > longest:
+                    found = (name, item)
+                    longest = len(alias_lower)
+
+    if found:
+        return found
+
     return None, None
 
 
@@ -267,6 +325,12 @@ def add_product_to_day(day_data, product_name, item, amount):
             amount = 1
         multiplier = amount
         amount_text = f"{amount:.0f} порц."
+
+    elif item.get("liquid"):
+        if amount is None:
+            amount = 100
+        multiplier = amount / 100
+        amount_text = f"{amount:.0f} мл"
 
     else:
         if amount is None:
@@ -294,34 +358,35 @@ def add_product_to_day(day_data, product_name, item, amount):
     })
 
     save_data()
-
     return kcal, protein, fat, carbs, amount_text
 
 
 def help_text():
     return (
         "🤖 КОМАНДЫ\n\n"
-        "/stats — показать КБЖУ за сегодня\n"
-        "/reset — сбросить сегодняшний день\n"
-        "/days — список сохранённых дней\n"
-        "/day 2026-06-14 — посмотреть конкретный день\n"
+        "/stats — КБЖУ за сегодня\n"
+        "/reset — сбросить сегодня\n"
+        "/days — список дней\n"
+        "/day 2026-06-14 — посмотреть день\n"
         "/products — список продуктов\n\n"
-
         "⚙️ Нормы:\n"
-        "/setkcal 3000 — изменить калории\n"
-        "/setprotein 130 — изменить белки\n"
-        "/setfat 80 — изменить жиры\n"
-        "/setcarbs 430 — изменить углеводы\n\n"
-
-        "🍽 Как добавлять еду:\n"
-        "• 550 22 26 55\n"
+        "/setkcal 3000\n"
+        "/setprotein 130\n"
+        "/setfat 80\n"
+        "/setcarbs 430\n\n"
+        "🍽 Еда:\n"
         "• творог 272\n"
         "• 2 яйца\n"
         "• запеканка\n"
         "• пицца 300\n"
         "• клубника 250\n\n"
-
-        "Для обычных продуктов число = граммы.\n"
+        "🥤 Жидкости:\n"
+        "• кола 500\n"
+        "• яблочный сок 250\n"
+        "• молоко 300\n"
+        "• энергетик 500\n\n"
+        "Для еды число = граммы.\n"
+        "Для жидкостей число = мл.\n"
         "Для яиц число = штуки.\n"
         "Для запеканки/хотдога/сэндвича число = порции."
     )
@@ -352,7 +417,7 @@ def day_report(user, date):
         f"🥩 Белки: {d['protein']:.1f} г\n"
         f"🥑 Жиры: {d['fat']:.1f} г\n"
         f"🍚 Углеводы: {d['carbs']:.1f} г\n\n"
-        f"🍽 Что ел:\n{items_text}"
+        f"🍽 Что ел/пил:\n{items_text}"
     )
 
 
@@ -364,34 +429,42 @@ def simple_advice(text, user, day_data):
 
     if "что" in text and ("поесть" in text or "купить" in text):
         return (
-            "🍽 Дешево добрать можно так:\n\n"
+            "🍽 Дешево добрать:\n\n"
             "🥩 Белок: творог, яйца, skyr, курица, тунец.\n"
             "🍚 Угли: рис, макароны, хлеб, овсянка, бананы.\n"
-            "🥑 Жиры: сыр, орехи, масло, арахис.\n\n"
-            "Biedronka дешевле, Żabka удобнее. Как всегда, жизнь выбирает между болью и болью подороже."
+            "🥑 Жиры: сыр, орехи, масло, арахис.\n"
+            "🥤 Калории жидкостью: молоко, сок, кола, энергетик."
+        )
+
+    if "пить" in text or "жидк" in text or "сок" in text:
+        return (
+            "🥤 Я умею считать жидкости в мл.\n\n"
+            "Примеры:\n"
+            "• кола 500\n"
+            "• яблочный сок 250\n"
+            "• апельсиновый сок 1000\n"
+            "• молоко 300\n"
+            "• энергетик 500"
         )
 
     if "бел" in text:
-        return f"🥩 Белка осталось: {user['target_protein'] - day_data['protein']:.1f} г. Добей творогом, яйцами, skyr или курицей."
+        return f"🥩 Белка осталось: {user['target_protein'] - day_data['protein']:.1f} г."
 
     if "угл" in text:
-        return f"🍚 Углеводов осталось: {user['target_carbs'] - day_data['carbs']:.1f} г. Добей рисом, макаронами, хлебом или бананами."
+        return f"🍚 Углеводов осталось: {user['target_carbs'] - day_data['carbs']:.1f} г."
 
     if "жир" in text:
-        return f"🥑 Жиров осталось: {user['target_fat'] - day_data['fat']:.1f} г. Добей сыром, орехами, яйцами или маслом."
+        return f"🥑 Жиров осталось: {user['target_fat'] - day_data['fat']:.1f} г."
 
     return (
-        "Я могу считать еду по названию или по цифрам.\n\n"
+        "Я могу считать еду/жидкости по названию или по цифрам.\n\n"
         "Примеры:\n"
         "• творог 272\n"
         "• 2 яйца\n"
         "• запеканка\n"
-        "• пицца 300\n"
-        "• клубника 250\n"
-        "• 550 22 26 55\n\n"
-        "История:\n"
-        "• /days\n"
-        "• /day 2026-06-14"
+        "• кола 500\n"
+        "• яблочный сок 250\n"
+        "• 550 22 26 55"
     )
 
 
@@ -416,39 +489,25 @@ async def handle(message: types.Message):
 
     if text == "/products":
         product_list = ", ".join(PRODUCTS.keys())
-        await message.answer("🍽 Продукты, которые я знаю:\n\n" + product_list)
+        await message.answer("🍽 Продукты и жидкости, которые я знаю:\n\n" + product_list)
         return
 
     if text == "/days":
         days = sorted(user["days"].keys(), reverse=True)
-
-        if not days:
-            await message.answer("Пока нет сохранённых дней.")
-            return
-
         await message.answer("📅 Сохранённые дни:\n\n" + "\n".join(days[:30]))
         return
 
     if text.startswith("/day"):
         parts = text.split()
-
         if len(parts) < 2:
             await message.answer("Пиши так: /day 2026-06-14")
             return
-
-        date = parts[1]
-        await message.answer(day_report(user, date))
+        await message.answer(day_report(user, parts[1]))
         return
 
     if text == "/reset":
         day = today_key()
-        user["days"][day] = {
-            "kcal": 0,
-            "protein": 0,
-            "fat": 0,
-            "carbs": 0,
-            "items": []
-        }
+        user["days"][day] = {"kcal": 0, "protein": 0, "fat": 0, "carbs": 0, "items": []}
         save_data()
         await message.answer("🧹 Сегодняшний день сброшен.")
         return
@@ -541,7 +600,6 @@ async def handle(message: types.Message):
 async def remind():
     for user_id, user in users.items():
         day = today_key()
-
         if day not in user["days"]:
             continue
 
@@ -551,8 +609,7 @@ async def remind():
         if left > 500:
             await bot.send_message(
                 int(user_id),
-                f"⏰ Напоминание\n\n"
-                f"Осталось примерно {left:.0f} ккал. Пора поесть."
+                f"⏰ Напоминание\n\nОсталось примерно {left:.0f} ккал. Пора поесть."
             )
 
 
